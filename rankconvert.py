@@ -3,9 +3,15 @@
 (http://www.cs.cornell.edu/andru/civs.html) to the BLT format
 used by, e.g., OpenSTV (www.openstv.org/).
 
+For example, given this file these ranks
+
+Note: this uses the specified filename as the title of the election (last line of BLT file).
+
 http://code.google.com/p/stv/wiki/BLTFileFormat
 
-TODO: support the popular "text" format and equal rankings via the "=" delimiter.
+TODO:
+ * support the popular "text" format and equal rankings via the "=" delimiter.
+ * support initial multiplier, provided as <integer>x, e.g. "3X"
 
 %InsertOptionParserUsage%
 """
@@ -65,31 +71,43 @@ def rankconvert(parser):
 
     delimiter = options.delimiter
 
-    reader = open(args[0])
+    infilename = args[0]
+
+    reader = open(infilename)
     r = reader.next()
+
+    # FIXME: deal with quoted commas. Perhaps just use csv module.
     choices = r.rstrip().split(delimiter)
     n = len(choices)
 
     print n,options.numwin
 
     for r in reader:
-        weights = []
+        ranks = []
         for c in r.rstrip().split(delimiter):
-            weights.append(int(c))
-        last = max(weights)
+            try:
+                ranks.append(int(c))
+            except:
+                ranks.append('-')
 
+        # Each BLT line begins with a count.
         print "1",
-        for (i,w) in sorted(enumerate(weights), key=operator.itemgetter(1)):
+
+        last = max(ranks)
+
+        for i, w in sorted(enumerate(ranks), key=operator.itemgetter(1)):
             if w == last:
                 break
-            # if there are more and weights are equal print = otherwise >
+            # FIXME: if there are more and ranks are equal print = otherwise >
             print i+1,
+
+        # Each BLT line ends with a 0
         print "0"
 
     print "0"
     for choice in choices:
         print '"%s"' % choice
-    print '"Ballot data converted by rankconvert"'
+    print '"%s"' % infilename
 
 if __name__ == "__main__":
     rankconvert(parser)
