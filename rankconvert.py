@@ -37,6 +37,7 @@ import optparse
 from optparse import make_option
 import logging
 import operator
+import re
 
 __author__ = "Neal McBurnett <http://neal.mcburnett.org/>"
 __copyright__ = "Copyright (c) 2009 Neal McBurnett"
@@ -89,7 +90,51 @@ def rankconvert(parser):
     infilename = args[0]
 
     reader = open(infilename)
-    r = next(reader)
+
+    # parse dominion-ranked-marks format
+    # Skip first 3 lines
+    next(reader)
+    next(reader)
+
+    ranked_header_re = r"(\w+ \w+)\((\d+)\)"
+
+    h = next(reader)
+
+    # Establish mapping between columns and assignments of marks to rankings
+    mark_map = []
+
+    for name in h.split(','):
+        match = re.search(ranked_header_re, name)
+        if match:
+            name, rank = match.groups()
+            # print(f'{name}, {rank}')
+            mapping = [name, rank]
+        else:
+            mapping = None
+
+        mark_map.append(mapping)
+
+    # Skip row of conventional headers
+    next(reader)
+
+    for r in reader:
+        ranks = []
+        dups = 0
+        cols = r.split(',')
+        print(cols[0], end=': ')
+        for col, mapping in zip(cols, mark_map):
+            if mapping and col == '1':
+                name, rank = mapping
+                if name in ranks:
+                    dups += 1
+                ranks.append(name)
+                print(f'{mapping=}', end='\t')
+        print()
+        if dups > 0:
+            print(f'dup')
+            #print(f'dup: {r}')
+
+    sys.exit()
 
     # FIXME: deal with quoted commas. Perhaps just use csv module.
     choices = r.rstrip().split(delimiter)
