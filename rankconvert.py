@@ -103,12 +103,20 @@ def rankconvert(parser):
     # Establish mapping between columns and assignments of marks to rankings
     mark_map = []
 
+    max_ranking = '0'
+
     for name in h.split(','):
         match = re.search(ranked_header_re, name)
         if match:
             name, rank = match.groups()
             # print(f'{name}, {rank}')
             mapping = [name, rank]
+            # Code later on relies on this assumption
+            # FIXME if it matters: use numeric comparison, so '10' is not less than '2'
+            if rank < max_ranking:
+                print(f'Assumption failure: rankings not monotonic, next {rank=}, less than {max_ranking=}', file=sys.stderr)
+                sys.exit()
+            max_ranking = rank
         else:
             mapping = None
 
@@ -117,22 +125,55 @@ def rankconvert(parser):
     # Skip row of conventional headers
     next(reader)
 
+    # Interpret marks on CVRs
     for r in reader:
-        ranks = []
+        ranked = []
+        ranknums = []
         dups = 0
+        numdups = 0
+        numskips = 0
         cols = r.split(',')
-        print(cols[0], end=': ')
+        cvrid = cols[0]
+        print(cvrid, end=': ')
         for col, mapping in zip(cols, mark_map):
             if mapping and col == '1':
                 name, rank = mapping
-                if name in ranks:
+                # Check for overvotes
+                if rank in ranknums:
+                    # print(f'{cvrid=}, }: overvote', file=sys.stderr)
+                    numdups += 1
+                    ranked.pop()
+                    ranknums.pop()
+                    break
+
+                # Check for skipped rankings
+                if len(ranknums) > 0  and  int(rank) > int(ranknums[-1]) + 1:
+                    print(f'{cvrid=}, {mapping}: skiped rank', file=sys.stderr)
+                    numskips += 1
+                    break
+
+                if rank in ranknums:
+                    # print(f'{cvrid=}, }: overvote', file=sys.stderr)
+                    numdups += 1
+                    ranked.pop()
+                    ranknums.pop()
+                    break
+
+                # Check for duplicate votes
+                if name in ranked:
                     dups += 1
-                ranks.append(name)
+                    continue
+                ranked.append(name)
+                ranknums.append(rank)
                 print(f'{mapping=}', end='\t')
         print()
         if dups > 0:
-            print(f'dup')
+            print(f'dup in {cvrid=}', file=sys.stderr)
             #print(f'dup: {r}')
+        if numdups > 0:
+            print(f'overvote in {cvrid=}', file=sys.stderr)
+        if numskips > 0:
+            print(f'skip in {cvrid=}', file=sys.stderr)
 
     sys.exit()
 
