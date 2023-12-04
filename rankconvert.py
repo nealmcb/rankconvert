@@ -3,14 +3,30 @@
 (http://www.cs.cornell.edu/andru/civs.html) to the BLT format
 used by, e.g., OpenSTV (www.openstv.org/).
 
-For example, given this file these ranks
+Note that both formats list ranks, rather than putting choices in order.
+For example, given these ranks:
+A,B,C,D,E
+1,4,3,2,5
+5,4,3,2,1
+
+it produces this blt file:
+5 1
+1 1 4 3 2 0
+1 5 4 3 2 0
+0
+"A"
+"B"
+"C"
+"D"
+"E"
+"testdata0.civs"
 
 Note: this uses the specified filename as the title of the election (last line of BLT file).
 
 http://code.google.com/p/stv/wiki/BLTFileFormat
 
 TODO:
- * support the popular "text" format and equal rankings via the "=" delimiter.
+ * support the popular ordered "text" format and equal rankings via the "=" delimiter.
  * support initial multiplier, provided as <integer>x, e.g. "3X"
 
 %InsertOptionParserUsage%
@@ -95,6 +111,7 @@ def rankconvert(parser):
         last = max(ranks)
 
         for i, w in sorted(enumerate(ranks), key=operator.itemgetter(1)):
+            # FIXME: why leave out the last rank?
             if w == last:
                 break
             # FIXME: if there are more and ranks are equal print = otherwise >
