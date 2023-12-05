@@ -92,6 +92,9 @@ def rankconvert(parser):
     reader = open(infilename)
 
     # parse dominion-ranked-marks format
+    # TODO: output total ballots, total blanks to begin with
+    # TODO: output both original marks and cleaned rankings
+
     # Skip first 3 lines
     next(reader)
     next(reader)
@@ -125,6 +128,16 @@ def rankconvert(parser):
     # Skip row of conventional headers
     next(reader)
 
+    candidates = sorted(set(entry[0] for entry in mark_map if entry is not None))
+    logging.info(f'{candidates=}')
+
+    bltfile = open('output.blt', 'w')
+    print(f'{len(candidates)} {options.numwin}', file=bltfile)
+
+    # a CSV file with candidate names in header, ranks for each candidate in rows
+    civsfile = open('output.civs', 'w')
+    print(','.join(candidates), file=civsfile)
+
     # Interpret marks on CVRs
     for r in reader:
         ranked = []
@@ -148,25 +161,35 @@ def rankconvert(parser):
 
                 # Check for skipped rankings
                 if len(ranknums) > 0  and  int(rank) > int(ranknums[-1]) + 1:
-                    print(f'{cvrid=}, {mapping}: skiped rank', file=sys.stderr)
+                    # print(f'{cvrid=}, {mapping}: skiped rank', file=sys.stderr)
                     numskips += 1
-                    break
-
-                if rank in ranknums:
-                    # print(f'{cvrid=}, }: overvote', file=sys.stderr)
-                    numdups += 1
-                    ranked.pop()
-                    ranknums.pop()
                     break
 
                 # Check for duplicate votes
                 if name in ranked:
                     dups += 1
-                    continue
+                    break
+
                 ranked.append(name)
                 ranknums.append(rank)
                 print(f'{mapping=}', end='\t')
         print()
+
+        # print candidate indices in rank order
+        indices = [str(candidates.index(name) + 1) for name in ranked]
+
+        # Add leading ballot count and trailing 0, for BLT compatibility
+        bltindices = ['1'] + indices + ['0']
+        print(' '.join(bltindices), file=bltfile)
+
+        # Generate output in CIVS format also:
+
+        ranks = {name: rank for name, rank in zip(ranked, ranknums)}
+        ranklist = [ranks.get(name, '') for name in candidates]
+        logging.debug(f'{ranks=}')
+        logging.debug(f'{ranklist=}')
+        print(','.join(ranklist), file=civsfile)
+
         if dups > 0:
             print(f'dup in {cvrid=}', file=sys.stderr)
             #print(f'dup: {r}')
@@ -174,6 +197,13 @@ def rankconvert(parser):
             print(f'overvote in {cvrid=}', file=sys.stderr)
         if numskips > 0:
             print(f'skip in {cvrid=}', file=sys.stderr)
+
+    # Finish BLT file with a 0, then candidate names and a comment
+    print(f'0', file=bltfile)
+    for name in candidates:
+        print(f'"{name}"', file=bltfile)
+    print(f'"Ballot data converted by rankconvert"', file=bltfile)
+
 
     sys.exit()
 
