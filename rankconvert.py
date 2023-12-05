@@ -139,7 +139,10 @@ def rankconvert(parser):
     print(','.join(candidates), file=civsfile)
 
     # Interpret marks on CVRs
+    ranked_ballots = 0
+
     for r in reader:
+        has_contest = False
         ranked = []
         ranknums = []
         dups = 0
@@ -148,7 +151,10 @@ def rankconvert(parser):
         cols = r.split(',')
         cvrid = cols[0]
         print(cvrid, end=': ')
+
         for col, mapping in zip(cols, mark_map):
+            if mapping and col != '':
+                has_contest = True
             if mapping and col == '1':
                 name, rank = mapping
                 # Check for overvotes
@@ -173,30 +179,35 @@ def rankconvert(parser):
                 ranked.append(name)
                 ranknums.append(rank)
                 print(f'{mapping=}', end='\t')
+
+        if has_contest:
+            ranked_ballots += 1
+
         print()
 
-        # print candidate indices in rank order
-        indices = [str(candidates.index(name) + 1) for name in ranked]
+        if ranked:
+            # print candidate indices in rank order
+            indices = [str(candidates.index(name) + 1) for name in ranked]
 
-        # Add leading ballot count and trailing 0, for BLT compatibility
-        bltindices = ['1'] + indices + ['0']
-        print(' '.join(bltindices), file=bltfile)
+            # Add leading ballot count and trailing 0, for BLT compatibility
+            bltindices = ['1'] + indices + ['0']
+            print(' '.join(bltindices), file=bltfile)
 
-        # Generate output in CIVS format also:
+            # Generate output in CIVS format also:
 
-        ranks = {name: rank for name, rank in zip(ranked, ranknums)}
-        ranklist = [ranks.get(name, '') for name in candidates]
-        logging.debug(f'{ranks=}')
-        logging.debug(f'{ranklist=}')
-        print(','.join(ranklist), file=civsfile)
+            ranks = {name: rank for name, rank in zip(ranked, ranknums)}
+            ranklist = [ranks.get(name, '') for name in candidates]
+            logging.debug(f'{ranks=}')
+            logging.debug(f'{ranklist=}')
+            print(','.join(ranklist), file=civsfile)
 
-        if dups > 0:
-            print(f'dup in {cvrid=}', file=sys.stderr)
-            #print(f'dup: {r}')
-        if numdups > 0:
-            print(f'overvote in {cvrid=}', file=sys.stderr)
-        if numskips > 0:
-            print(f'skip in {cvrid=}', file=sys.stderr)
+            if dups > 0:
+                print(f'dup in {cvrid=}', file=sys.stderr)
+                #print(f'dup: {r}')
+            if numdups > 0:
+                print(f'overvote in {cvrid=}', file=sys.stderr)
+            if numskips > 0:
+                print(f'skip in {cvrid=}', file=sys.stderr)
 
     # Finish BLT file with a 0, then candidate names and a comment
     print(f'0', file=bltfile)
@@ -204,6 +215,7 @@ def rankconvert(parser):
         print(f'"{name}"', file=bltfile)
     print(f'"Ballot data converted by rankconvert"', file=bltfile)
 
+    logging.info(f'{ranked_ballots=}')
 
     sys.exit()
 
