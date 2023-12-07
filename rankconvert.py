@@ -145,6 +145,7 @@ def rankconvert(parser):
         has_contest = False
         ranked = []
         ranknums = []
+        lastrank = 0
         dups = 0
         numdups = 0
         numskips = 0
@@ -157,6 +158,7 @@ def rankconvert(parser):
                 has_contest = True
             if mapping and col == '1':
                 name, rank = mapping
+
                 # Check for overvotes
                 if rank in ranknums:
                     # print(f'{cvrid=}, }: overvote', file=sys.stderr)
@@ -166,7 +168,7 @@ def rankconvert(parser):
                     break
 
                 # Check for skipped rankings
-                if len(ranknums) > 0  and  int(rank) > int(ranknums[-1]) + 1:
+                if int(rank) > lastrank + 1:
                     # print(f'{cvrid=}, {mapping}: skiped rank', file=sys.stderr)
                     numskips += 1
                     break
@@ -178,6 +180,7 @@ def rankconvert(parser):
 
                 ranked.append(name)
                 ranknums.append(rank)
+                lastrank = int(rank)
                 print(f'{mapping=}', end='\t')
 
         if has_contest:
@@ -186,15 +189,14 @@ def rankconvert(parser):
         print()
 
         if ranked:
-            # print candidate indices in rank order
+            # For BLT output, print candidate indices in rank order
             indices = [str(candidates.index(name) + 1) for name in ranked]
 
             # Add leading ballot count and trailing 0, for BLT compatibility
             bltindices = ['1'] + indices + ['0']
             print(' '.join(bltindices), file=bltfile)
 
-            # Generate output in CIVS format also:
-
+            # Generate output in CIVS csv format also:
             ranks = {name: rank for name, rank in zip(ranked, ranknums)}
             ranklist = [ranks.get(name, '') for name in candidates]
             logging.debug(f'{ranks=}')
