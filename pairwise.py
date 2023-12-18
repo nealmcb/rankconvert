@@ -48,8 +48,8 @@ input_data = """
 ignore me
 """
 
-input_data = open('output.blt').read()
-# input_data = sys.stdin.read()
+# input_data = open('output.blt').read()
+input_data = sys.stdin.read()
 
 # Process the input and print the results
 pair_counts = process_input(input_data)
